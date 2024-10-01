@@ -140,7 +140,7 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
     - Then at `qtr._bimi.{domain}`
 
 - **User Feedback**
-  - Inform the user of the verification result within 2 seconds.
+  - Inform the user of the verification result within 4 seconds.
 
 ## 5. Cryptographic Specifications
 
@@ -191,6 +191,12 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
 
 - **Query:**
   - TXT record at `{key_id}._qtr.{domain}`
+  - Cascades upwards similar to BIMI DNS records.
+    - For example, the domain `third.second.first.example.com` will invoke the following lookups until the `key_id` is found:
+      - `{key_id}._qtr.third.second.first.example.com`
+      - `{key_id}._qtr.second.first.example.com`
+      - `{key_id}._qtr.first.example.com`
+      - `{key_id}._qtr.example.com`
 
 - **Record Content:**
   - Contains the public key in Base64-encoded DER format (similar to DKIM).
