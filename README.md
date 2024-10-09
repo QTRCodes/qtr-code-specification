@@ -112,7 +112,10 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Application scans the QR code and extracts data and parameters.
 
 - **Parameter Parsing:**
-  - Parse the `qtr` and `qtr-d` parameters, or the `qtr-s` parameter.
+  - If querystrings other than those used for `qtr`, then `qtr` parameters are required for a possible verified link.
+  - In other words, if the data is a URL with only a host (or a path of `/`) then `qtr` parameters are optional.
+  - BIMI and valid VMC will still required to be a verified link.
+  - If applicable, parse the `qtr` and `qtr-d` parameters, or the `qtr-s` parameter.
 
 - **Handle Shortened URL:**
   - Check the domain for a valid BIMI record.
@@ -121,7 +124,10 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Inform the user if domains differ.
 
 - **Original Data Reconstruction**
-  - Remove `qtr` and `qtr-d` to retrieve the original data.
+  - If applicable, remove `qtr` and `qtr-d` to retrieve the original data.
+  - The data should be trimmed of any trailing `&` or `?` characters, for example:
+    - `https://qtrco.de?test=123&qtr=1d123-...` => `https://qtrco.de?test=123`
+    - `https://qtrco.de?qtr=1d456-...` => `https://qtrco.de`
 
 - **Domain Determination**
   - Determine the domain from the URL or `qtr-d` parameter.
