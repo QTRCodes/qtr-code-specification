@@ -1,9 +1,9 @@
 # Quick Trusted Response (QTR) Codes Specification Document
 
 **Title:** Quick Trusted Response (QTR) Codes Specification  
-**Version:** 0.1
-**Status:** Drafting
-**Date written and last reviewed:** 30th September 2024
+**Version:** 0.1  
+**Status:** Drafting  
+**Date written and last reviewed:** 30th September 2024  
 
 ## Table of Contents
 
