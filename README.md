@@ -93,7 +93,7 @@ x-qtr={version}{key_location}{key_id}-{signature}
 ### 3.3 Additional Parameters
 
 - **`x-qtr-d`:** (Optional) Specifies the domain for non-URL data.
-  - Example: `tel:+441234567890?x-qtr-d=github.com`
+  - Example: `tel:+441234567890#x-qtr-d=github.com`
 - **`x-qtr-s`:** (Optional) Specifies the short URL mechanism.
   - Example: `https://example.com?x-qtr-s`
 
