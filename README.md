@@ -3,7 +3,7 @@
 **Title:** Quick Trusted Response (QTR) Codes Specification  
 **Version:** 0.1  
 **Status:** Drafting  
-**Date written and last reviewed:** 30th September 2024  
+**Date last updated:** 17th October 2024  
 
 ## Table of Contents
 
