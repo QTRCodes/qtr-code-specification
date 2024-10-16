@@ -170,26 +170,17 @@ x-qtr={version}{key_location}{key_id}-{signature}
   - The original data without any `x-qtr` parameters.
 
 - **Process:**
-  - Generate a hash of the data using SHA-256.
-  - Sign the hash using the private key corresponding to the public key.
+  - Sign the data using the private key.
 
 - **Signature Encoding:**
-  - Encode the signature in Base64.
+  - Encode the signature in URL safe Base64.
 
 ### 5.3 Public Key Format
 
 - **Encoding:**
-  - Public keys are Base64-encoded.
-
-- **DNS Record Format:**
-  - TXT record containing the public key:
-    ```
-    v=QTR1; p={Base64-encoded public key}
-    ```
+  - Public keys are JWTs either as JSON, or URL safe Base64 encoded JSON.
 
 ## 6. Public Key Retrieval Methods
-
-All public keys are stored in JWK format - either as a JSON string, or Base64 URL safe encoded JSON string.
 
 ### 6.1 DNS Record (`key_location == 'd'`)
 
