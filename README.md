@@ -11,7 +11,7 @@
 2. [Terminology](#2-terminology)
 3. [QTR Parameter Format](#3-qtr-parameter-format)
    - [3.1 Structure](#31-structure)
-   - [3.2 Example](#32-example)
+   - [3.2 Examples](#32-examples)
    - [3.3 Additional Parameters](#33-additional-parameters)
 4. [Operational Workflow](#4-operational-workflow)
    - [4.1 QR Code Generation](#41-qr-code-generation)
@@ -20,26 +20,29 @@
    - [5.1 Supported Algorithms](#51-supported-algorithms)
    - [5.2 Signature Generation](#52-signature-generation)
    - [5.3 Public Key Format](#53-public-key-format)
-   - [5.4 Encodings](#54-encodings)
 6. [Public Key Retrieval Methods](#6-public-key-retrieval-methods)
    - [6.1 DNS Record (`key_location == 'd'`)](#61-dns-record-key_location--d)
    - [6.2 Well-Known JWKS (`key_location == 'w'`)](#62-well-known-jwks-key_location--w)
    - [6.3 Specific Well-Known Endpoint (`key_location == 's'`)](#63-specific-well-known-endpoint-key_location--s)
-7. [Error Handling and Timeouts](#7-error-handling-and-timeouts)
-8. [Backward Compatibility](#8-backward-compatibility)
-9. [Security Considerations](#9-security-considerations)
-10. [Privacy and Ethical Considerations](#10-privacy-and-ethical-considerations)
-11. [Future Extensions](#11-future-extensions)
-12. [References](#12-references)
+   - [6.4 HTTP Response Header from Hostname (`key_location == 'h'`)](#64-http-response-header-from-hostname-key_location--h)
+   - [6.5 HTTP Response Header from URL (`key_location == 'u'`)](#65-http-response-header-from-url-key_location--u)
+7. [Examples](#7-examples)
+9. [Error Handling and Timeouts](#8-error-handling-and-timeouts)
+9. [Backward Compatibility](#9-backward-compatibility)
+10. [Security Considerations](#10-security-considerations)
+11. [Privacy and Ethical Considerations](#11-privacy-and-ethical-considerations)
+12. [Future Extensions](#12-future-extensions)
+13. [References](#13-references)
 
 ---
 
 ## 1. Introduction
 
-Quick Trusted Response (QTR) Codes enhance the security and trustworthiness of QR codes by introducing a standardised verification mechanism. This mechanism allows applications to authenticate the content of QR codes before any action is taken, mitigating risks associated with malicious QR codes.
+Quick Trusted Response (QTR) Codes enhance the security and trustworthiness of QR codes by introducing a standardised verification mechanism. This mechanism allows applications to authenticate the content of QR codes before any action is taken, mitigating risks associated with malicious QR codes. The QTR mechanism can be used outside of QR codes by browsers or applications processing links, implementation details for non-QR use-cases is out-of-scope for this document.
 
 ## 2. Terminology
 
+- **QTR:** Quick Trusted Response
 - **QTR Code:** A QR code that includes mechanisms to verify signed information.
 - **BIMI:** Brand Indicators for Message Identification; used for displaying verified brand logos.
 - **Key ID (`kid`):** Identifier for the public key used in signature verification.
@@ -47,47 +50,52 @@ Quick Trusted Response (QTR) Codes enhance the security and trustworthiness of Q
   - `d`: DNS record
   - `w`: `.well-known/jwks.json`
   - `s`: `.well-known/{kid}.json`
-- **DER Format:** Distinguished Encoding Rules format for encoding public keys.
-- **z-base-32 Encoding:** Encoding scheme that represents binary data in an ASCII string format.
+  - `h`: `X-QTR-P` header available in HEAD request to hostname
+  - `u`: `X-QTR-P` header available in HEAD request to URL
 
 ## 3. QTR Parameter Format
 
 ### 3.1 Structure
 
-The `qtr` parameter has the following structure:
+The `x-qtr` parameter has the following structure:
 
 ```
-qtr={version}{key_location}{key_id}-{signature}
+x-qtr={version}{key_location}{key_id}-{signature}
 ```
 
 - **version** (1 or more numerical digits): QTR protocol version number (e.g., `1`).
 - **key_location** (1 a-z character): Method to retrieve the public key.
-- **key_id** (variable length): Identifier for the public key.
-- **signature** (variable length): z-base-32 encoded cryptographic signature.
+- **key_id** (variable length): Identifier for the public key (optional for `h` and `u` key locations).
+- **signature** (variable length): base64 URL safe encoded cryptographic signature.
 
 #### 3.1.1 QTR Parameter Regular Expression
 
 ```
-^(?P<version>[0-9]+)(?P<key_location>[a-z])(?P<key_id>.*)\-(?P<signature>[ybndrfg8ejkmcpqxot1uwisza345h769]+)$
+^(?i:x-qtr=)?(?P<version>\d+)(?P<key_location>[a-z])(?P<key_id>[^-]+)?\-(?P<signature>[A-Za-z0-9_-]+)$
 ```
 
-### 3.2 Example
+### 3.2 Examples
 
-```
-qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
-```
+1: `x-qtr=1d1234-TVuX6dqmmVi-nF8YLo8GquM5MfsLqexcv4KXmGliNt--c2RT6b34sR2dQfD3O20OlhjpDRXAPLh3DAgZ0KClBw`
 
 - **Version:** `1`
 - **Key Location:** `d` (DNS)
 - **Key ID:** `1234`
-- **Signature:** `rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso` (SHA256 hash in z-base-32 format)
+- **Signature:** `TVuX6dqmmVi-nF8YLo8GquM5MfsLqexcv4KXmGliNt--c2RT6b34sR2dQfD3O20OlhjpDRXAPLh3DAgZ0KClBw` (Ed25519 signature in base64 URL safe format)
+
+2: `x-qtr=1h-TVuX6dqmmVi-nF8YLo8GquM5MfsLqexcv4KXmGliNt--c2RT6b34sR2dQfD3O20OlhjpDRXAPLh3DAgZ0KClBw`
+
+- **Version:** `1`
+- **Key Location:** `h` (`X-QTR-P` response header to hostname request)
+- **Key ID:** _null_
+- **Signature:** `TVuX6dqmmVi-nF8YLo8GquM5MfsLqexcv4KXmGliNt--c2RT6b34sR2dQfD3O20OlhjpDRXAPLh3DAgZ0KClBw` (Ed25519 signature in base64 URL safe format)
 
 ### 3.3 Additional Parameters
 
-- **`qtr-d`:** (Optional) Specifies the domain for non-URL data.
-  - Example: `https://example.com?qtr-d=github.com`
-- **`qtr-s`:** (Optional) Specifies the short URL mechanism.
-  - Example: `https://example.com?qtr-s`
+- **`x-qtr-d`:** (Optional) Specifies the domain for non-URL data.
+  - Example: `tel:+441234567890?x-qtr-d=github.com`
+- **`x-qtr-s`:** (Optional) Specifies the short URL mechanism.
+  - Example: `https://example.com?x-qtr-s`
 
 ## 4. Operational Workflow
 
@@ -100,11 +108,11 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
    - The data is signed using a private key compliant with cryptographic specifications.
 
 3. **Appending QTR Parameters:**
-   - The `qtr` parameter is constructed and appended to the data.
-   - If applicable, the `qtr-d` parameter is also appended.
+   - The `x-qtr` parameter is constructed and appended to the data.
+   - If applicable, the `x-qtr-d` parameter is also appended.
 
 4. **Minifying the QR Code:**
-   - The `qtr-s` parameter can be used to specify the shortening mechanism.
+   - The `x-qtr-s` parameter can be used to specify the shortening mechanism.
 
 ### 4.2 QR Code Scanning and Verification
 
@@ -112,10 +120,10 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Application scans the QR code and extracts data and parameters.
 
 - **Parameter Parsing:**
-  - If querystrings other than those used for `qtr`, then `qtr` parameters are required for a possible verified link.
-  - In other words, if the data is a URL with only a host (or a path of `/`) then `qtr` parameters are optional.
+  - If querystrings other than those used for `x-qtr`, then `x-qtr` parameters are required for a possible verified link.
+  - In other words, if the data is a URL with only a host (or a path of `/`) then `x-qtr` parameters are optional.
   - BIMI and valid VMC will still required to be a verified link.
-  - If applicable, parse the `qtr` and `qtr-d` parameters, or the `qtr-s` parameter.
+  - If applicable, parse the `x-qtr` and `x-qtr-d` parameters, or the `x-qtr-s` parameter.
 
 - **Handle Shortened URL:**
   - Check the domain for a valid BIMI record.
@@ -124,13 +132,13 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Inform the user if domains differ.
 
 - **Original Data Reconstruction**
-  - If applicable, remove `qtr` and `qtr-d` to retrieve the original data.
+  - If applicable, remove `x-qtr` and `x-qtr-d` to retrieve the original data.
   - The data should be trimmed of any trailing `&` or `?` characters, for example:
-    - `https://qtrco.de?test=123&qtr=1d123-...` => `https://qtrco.de?test=123`
-    - `https://qtrco.de?qtr=1d456-...` => `https://qtrco.de`
+    - `https://qtrco.de?test=123&x-qtr=1d123-...` => `https://qtrco.de?test=123`
+    - `https://qtrco.de?x-qtr=1d456-...` => `https://qtrco.de`
 
 - **Domain Determination**
-  - Determine the domain from the URL or `qtr-d` parameter.
+  - Determine the domain from the URL or `x-qtr-d` parameter.
 
 - **Public Key Retrieval**
   - Check cache for existing `key_id`.
@@ -152,16 +160,13 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
 
 ### 5.1 Supported Algorithms
 
-- **RSA-SHA256:**
-  - Signature Algorithm: RSASSA-PKCS1-v1_5 using SHA-256.
-
 - **Ed25519-SHA256:**
   - Signature Algorithm: EdDSA using Ed25519 curve and SHA-256 hash.
 
 ### 5.2 Signature Generation
 
 - **Data to Sign:**
-  - The original data without `qtr` and `qtr-d` parameters.
+  - The original data without any `x-qtr` parameters.
 
 - **Process:**
   - Generate a hash of the data using SHA-256.
@@ -173,25 +178,17 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
 ### 5.3 Public Key Format
 
 - **Encoding:**
-  - Public keys are encoded in DER format and then Base64-encoded.
+  - Public keys are Base64-encoded.
 
 - **DNS Record Format:**
   - TXT record containing the public key:
     ```
-    v=QTR1; p={Base64-encoded DER public key}
+    v=QTR1; p={Base64-encoded public key}
     ```
 
-### 5.4 Encodings
-
-- **z-base-32:**
-  - **Alphabet:** `ybndrfg8ejkmcpqxot1uwisza345h769`
-
-- **Example:**
-  - **Plaintext:** `test`
-  - **SHA256 Hash:** `da77e228257194ecf7d6a1f7e1bee8ac5e3ba895ec13bb0bba8942377b64a6c4`
-  - **z-base-32 Encoding:** `5j56rkbfqgkq376sw856dxzeitxdzkri7oj5sn74tfbdq65rw5ny`
-
 ## 6. Public Key Retrieval Methods
+
+All public keys are stored in JWK format - either as a JSON string, or Base64 URL safe encoded JSON string.
 
 ### 6.1 DNS Record (`key_location == 'd'`)
 
@@ -205,7 +202,8 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
       - `{key_id}._qtr.example.com`
 
 - **Record Content:**
-  - Contains the public key in Base64-encoded DER format (similar to DKIM).
+  - Contains the public key in Base64-encoded JWT format.
+  - Example: `eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkRnU2I1SGtzeHh1aTNEMUljaVFkYjMySXpWbExjUjc3VjJZUWk1b25fVTgifQ`
 
 ### 6.2 Well-Known JWKS (`key_location == 'w'`)
 
@@ -216,6 +214,7 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
 
 - **Content:**
   - JSON Web Key Set containing public keys.
+  - Example: `{"keys":[{"kid":"1234","kty":"OKP","crv":"Ed25519","x":"DgSb5Hksxxui3D1IciQdb32IzVlLcR77V2YQi5on_U8"}]}`
 
 - **Key Identification:**
   - Use `key_id` (`kid`) to select the correct key.
@@ -228,13 +227,79 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   ```
 
 - **Content:**
-  - JSON containing the public key.
+  - JSON Web Key containing public key.
+  - Example: `{"kty":"OKP","crv":"Ed25519","x":"DgSb5Hksxxui3D1IciQdb32IzVlLcR77V2YQi5on_U8"}`
 
+### 6.4 HTTP Response Header from Hostname (`key_location == 'h'`)
 
-## 7. Error Handling and Timeouts
+- **X-QTR-P Header:**
+  - `curl -X HEAD https://{domain}`
+  - Where one key is used for the whole domain
+  - Example: `X-QTR-P: eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkRnU2I1SGtzeHh1aTNEMUljaVFkYjMySXpWbExjUjc3VjJZUWk1b25fVTgifQ`
+
+- **Content:**
+  - Contains the public key in Base64-encoded JWT format.
+
+### 6.5 HTTP Response Header from URL (`key_location == 'u'`)
+
+- **X-QTR-P Header:**
+  - `curl -X HEAD https://{domain}/{path}{querystrings}`
+  - Where different keys are used for different URLs
+  - Remove any `x-qtr` parameters
+  - Example: `X-QTR-P: eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkRnU2I1SGtzeHh1aTNEMUljaVFkYjMySXpWbExjUjc3VjJZUWk1b25fVTgifQ`
+
+- **Content:**
+  - Contains the public key in Base64-encoded JWT format.
+ 
+## 7. Examples
+
+Using the following example Ed25519 key pair:
+- Private key: `_rHY8zPRGPGMc4wh5QVZ_UFkdijgZlZrlpAYjrwycT8`
+- Public key: `DgSb5Hksxxui3D1IciQdb32IzVlLcR77V2YQi5on_U8`
+
+`https://example.com/testing?test=abc123&x-qtr=1h-SQvtNYeVHAL4usW_UCRVRmTb0A6ZEqB-nayOLbgk-eV90wGDt0MIIeEvkUItJvLTIFstpSmLZxYuGc97R9nNAg`
+
+Parse QTR, to get version 1 and key location in the `X-QTR-P` response header.
+
+`curl --head -s https://example.com | grep "x-qtr-p:"` =>  
+`x-qtr-p: eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkRnU2I1SGtzeHh1aTNEMUljaVFkYjMySXpWbExjUjc3VjJZUWk1b25fVTgifQ`
+
+Decode the `X-QTR-P` value to get the public key.
+
+Extract the message from the URL without `x-qtr` parameters: `https://example.com/testing?test=abc123`
+
+Verify the signature using the public key.
+
+``` python
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+import base64
+
+# Given data
+public_key_b64url = 'DgSb5Hksxxui3D1IciQdb32IzVlLcR77V2YQi5on_U8'
+signature_b64url = 'SQvtNYeVHAL4usW_UCRVRmTb0A6ZEqB-nayOLbgk-eV90wGDt0MIIeEvkUItJvLTIFstpSmLZxYuGc97R9nNAg'
+message = b'https://example.com/testing?test=abc123'
+
+# Decode the public key from Base64URL to bytes
+public_key_bytes = base64.urlsafe_b64decode(public_key_b64url + '==')
+
+# Load the public key
+public_key = Ed25519PublicKey.from_public_bytes(public_key_bytes)
+
+# Decode the signature from Base64URL to bytes
+signature_bytes = base64.urlsafe_b64decode(signature_b64url + '==')
+
+# Verify the signature
+try:
+    public_key.verify(signature_bytes, message)
+    print("Signature is valid.")
+except Exception as e:
+    print("Signature is invalid:", str(e))
+```
+
+## 8. Error Handling and Timeouts
 
 - **Timeouts:**
-  - Maximum acceptable latency for verification is **2 seconds**.
+  - Maximum acceptable latency for verification is **4 seconds**.
 
 - **Error Handling:**
   - If verification cannot be completed within the timeout, **warn the user**.
@@ -243,16 +308,16 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Implement error codes similar to email specifications (e.g., SMTP error codes).
 
 
-## 8. Backward Compatibility
+## 9. Backward Compatibility
 
 - **Compatibility:**
   - QTR Codes are designed to be backward compatible with standard QR code readers.
 
 - **Non-QTR Aware (Standard QR Reader) Applications:**
-  - Applications that do not recognise `qtr` parameters will ignore them and process the data normally.
+  - Applications that do not recognise `x-qtr` parameters will ignore them and process the data normally.
 
 
-## 9. Security Considerations
+## 10. Security Considerations
 
 - **Private Key Security:**
   - Private keys must be securely generated, stored, and managed.
@@ -270,7 +335,7 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Adhere to relevant industry standards and regulations (e.g., GDPR, PCI DSS).
 
 
-## 10. Privacy and Ethical Considerations
+## 11. Privacy and Ethical Considerations
 
 - **Data Minimisation:**
   - Collect only data necessary for verification.
@@ -285,7 +350,7 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Ensure QTR Codes are not used to track or profile users without consent.
 
 
-## 11. Future Extensions
+## 12. Future Extensions
 
 - **Quantum-Resistant Algorithms:**
   - Explore the adoption of quantum-resistant cryptographic algorithms.
@@ -300,10 +365,9 @@ qtr=1d1234-rjuy7pgn9dmagkptxyfhzicf4rhkrnic6851oc96456qr651efso
   - Improve caching mechanisms for better offline support.
 
 
-## 12. References
+## 13. References
 
 - **DKIM Specifications:** [RFC 6376](https://tools.ietf.org/html/rfc6376)
 - **BIMI Specifications:** [AuthIndicators Working Group](https://bimigroup.org/)
 - **JSON Web Key (JWK):** [RFC 7517](https://tools.ietf.org/html/rfc7517)
-- **RSA Cryptography Standard:** [RFC 8017](https://tools.ietf.org/html/rfc8017)
 - **Ed25519 Algorithm:** [RFC 8032](https://tools.ietf.org/html/rfc8032)
