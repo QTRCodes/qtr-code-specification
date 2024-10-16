@@ -133,9 +133,10 @@ x-qtr={version}{key_location}{key_id}-{signature}
 
 - **Original Data Reconstruction**
   - If applicable, remove `x-qtr` and `x-qtr-d` to retrieve the original data.
-  - The data should be trimmed of any trailing `&` or `?` characters, for example:
+  - The data should be trimmed of any trailing `&` or `?` or `#` characters, for example:
     - `https://qtrco.de?test=123&x-qtr=1d123-...` => `https://qtrco.de?test=123`
     - `https://qtrco.de?x-qtr=1d456-...` => `https://qtrco.de`
+    - `tel:+441234567890#x-qtr=1d456-...` => `tel:+441234567890`
 
 - **Domain Determination**
   - Determine the domain from the URL or `x-qtr-d` parameter.
