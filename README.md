@@ -47,9 +47,9 @@ Quick Trusted Response (QTR) Codes enhance the security and trustworthiness of Q
 - **BIMI:** Brand Indicators for Message Identification; used for displaying verified brand logos.
 - **Key ID (`kid`):** Identifier for the public key used in signature verification.
 - **Key Location:** Method to retrieve the public key:
-  - `d`: DNS record
+  - `d`: `{kid}._qtr` DNS record
   - `w`: `.well-known/jwks.json`
-  - `s`: `.well-known/{kid}.json`
+  - `s`: `.well-known/qtr/{kid}.json`
   - `h`: `X-QTR-P` header available in HEAD request to hostname
   - `u`: `X-QTR-P` header available in HEAD request to URL
 
@@ -215,7 +215,7 @@ x-qtr={version}{key_location}{key_id}-{signature}
 
 - **URL:**
   ```
-  https://{domain}/.well-known/{key_id}.json
+  https://{domain}/.well-known/qtr/{key_id}.json
   ```
 
 - **Content:**
